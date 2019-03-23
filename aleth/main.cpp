@@ -38,6 +38,8 @@
 #include <libweb3jsonrpc/Debug.h>
 #include <libweb3jsonrpc/Test.h>
 
+#include <json_spirit/JsonSpiritHeaders.h>
+
 #include "MinerAux.h"
 #include "AccountManager.h"
 
@@ -49,6 +51,7 @@ using namespace dev::p2p;
 using namespace dev::eth;
 namespace po = boost::program_options;
 namespace fs = boost::filesystem;
+namespace js = json_spirit;
 
 namespace
 {
@@ -680,16 +683,27 @@ int main(int argc, char** argv)
 
     if (!configJSON.empty())
     {
+        bool chainConfigError = true;
         try
         {
             chainParams = chainParams.loadConfig(configJSON, {}, configPath);
             chainConfigIsSet = true;
+            chainConfigError = false;
+        }
+        catch (js::Error_position const& error)
+        {
+            cerr << "json parsing error detected on line " << error.line_ << " in column "
+                 << error.column_ << ": " << error.reason_ << "\n";
         }
         catch (...)
         {
+        }
+        if (chainConfigError)
+        {
             cerr << "provided configuration is not well formatted\n";
-            cerr << "sample: \n" << genesisInfo(eth::Network::MainNetworkTest) << "\n";
-            return AlethErrors::Success;
+            cerr << "good configuration sample: \n"
+                 << genesisInfo(eth::Network::MainNetworkTest) << "\n";
+            return AlethErrors::ConfigFileInvalid;
         }
     }
 
